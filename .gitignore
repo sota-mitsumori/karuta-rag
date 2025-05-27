@@ -1,8 +1,6 @@
 # Virtual environment
 venv/
 
-# 応答用データフォルダ（PDF等）はGit管理から除外
-data/
 
 # Python cache
 __pycache__/
