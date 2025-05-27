@@ -17,4 +17,5 @@ gunicorn
 # others
 tiktoken
 python-dotenv
+line-bot-sdk
 pytest
