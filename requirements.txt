@@ -1,9 +1,20 @@
+#core
 openai
 langchain
 langchain-community
 langchain-openai
+
+# Vectore search
 faiss-cpu
+
+# PDF processing
+pypdf
+
+# Web server
+flask
+gunicorn
+
+# others
 tiktoken
 python-dotenv
 pytest
-pypdf

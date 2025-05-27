@@ -33,11 +33,16 @@ def get_qa_chain(k: int = 3, temperature: float = 0.0) -> RetrievalQA:
 
 def answer_query(query: str) -> str:
     """
-    単発クエリを受け取って回答を返す
+    単発クエリを受け取って回答文字列だけを返す
     """
     chain = get_qa_chain()
-    response = chain.invoke({"query": query})
-    return response
+    # invoke は {'result': '…回答…'} という辞書を返す
+    output = chain.invoke({"query": query})
+    # 'result' キーの値を取り出して文字列で返す
+    if isinstance(output, dict) and "result" in output:
+        return output["result"]
+    # 万が一他の形式なら文字列化
+    return str(output)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

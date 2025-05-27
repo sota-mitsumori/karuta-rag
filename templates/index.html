@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>競技かるたRAG Chat</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; }
+    #chat { border: 1px solid #ccc; padding: 1rem; height: 400px; overflow-y: scroll; }
+    #input { width: 100%; padding: .5rem; }
+  </style>
+</head>
+<body>
+  <h1>競技かるたルール質問チャット</h1>
+  <div id="chat"></div>
+  <form id="form">
+    <input id="input" autocomplete="off" placeholder="質問を入力…" />
+  </form>
+  <script>
+    const chat = document.getElementById("chat");
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      const q = input.value.trim();
+      if (!q) return;
+      // ユーザー発言表示
+      chat.innerHTML += `<div><b>Q:</b> ${q}</div>`;
+      input.value = "";
+      // サーバへ問い合わせ
+      const res = await fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q })
+      });
+      const data = await res.json();
+      chat.innerHTML += `<div><b>A:</b> ${data.answer}</div><hr/>`;
+      chat.scrollTop = chat.scrollHeight;
+    });
+  </script>
+</body>
+</html>
