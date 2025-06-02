@@ -34,7 +34,6 @@ def get_qa_chain(k: int = 3, temperature: float = 0.0) -> RetrievalQA:
     # 「コンテキスト以外は答えない」ようにするためのプロンプト
     system_template = """\
         あなたは競技かるた公式PDFからのみ回答を行うアシスタントです。
-        ドキュメントにない情報は知らないものとして「申し訳ありませんが、その情報は見つかりませんでした」と答えてください。
         """
     human_template = """\
         質問:
