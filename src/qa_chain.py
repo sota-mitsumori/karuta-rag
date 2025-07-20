@@ -34,6 +34,7 @@ def get_qa_chain(k: int = 3, temperature: float = 0.0) -> RetrievalQA:
     # 「コンテキスト以外は答えない」ようにするためのプロンプト
     system_template = """\
         あなたは競技かるた公式PDFからのみ回答を行うアシスタントです。
+        質問自体の正確性についても検討した上で、コンテキストに従って回答してください。
         """
     human_template = """\
         質問:
@@ -50,7 +51,7 @@ def get_qa_chain(k: int = 3, temperature: float = 0.0) -> RetrievalQA:
     ])
 
     qa_chain = RetrievalQA.from_chain_type(
-        llm=ChatOpenAI(model_name="gpt-4.1-mini", temperature=temperature),
+        llm=ChatOpenAI(model_name="gpt-4.1", temperature=temperature),
         chain_type="stuff",
         retriever=retriever,
         chain_type_kwargs={"prompt": prompt},
