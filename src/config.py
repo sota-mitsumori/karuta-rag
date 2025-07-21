@@ -14,5 +14,5 @@ PDF_DIR = os.getenv("PDF_DIR", "data/karuta_rules_pdfs")
 INDEX_DIR = os.getenv("INDEX_DIR", "karuta_rules_faiss")
 
 # ドキュメント分割設定
-CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1000"))
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "850"))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "200"))
