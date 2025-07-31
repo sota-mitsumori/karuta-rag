@@ -75,7 +75,7 @@ python app.py
 
 ### Web UI
 
-karuta-rag.onrender.com/
+https://karuta-rag.onrender.com/
 
 ### LINE Bot
 
