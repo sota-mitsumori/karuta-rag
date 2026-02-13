@@ -51,7 +51,13 @@ def get_qa_chain(k: int = 3, temperature: float = 0.0):
         HumanMessagePromptTemplate.from_template(human_template),
     ])
 
-    llm = ChatOpenAI(model_name="gpt-5-mini", temperature=temperature)
+    # OpenAI APIのタイムアウトを120秒に設定（Gunicornのタイムアウトと合わせる）
+    llm = ChatOpenAI(
+        model_name="gpt-5-mini",
+        temperature=temperature,
+        timeout=120.0,  # 秒単位
+        max_retries=2,  # リトライ回数
+    )
 
     # RAG チェーン（LCEL を利用）
     qa_chain = (
