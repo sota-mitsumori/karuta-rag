@@ -3,8 +3,9 @@ import openai
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_openai.chat_models.base import ChatOpenAI
-from langchain.chains import RetrievalQA
-from langchain.prompts import (
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.prompts import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
@@ -13,7 +14,7 @@ from langchain.prompts import (
 
 from .config import OPENAI_API_KEY, INDEX_DIR
 
-def get_qa_chain(k: int = 3, temperature: float = 0.0) -> RetrievalQA:
+def get_qa_chain(k: int = 3, temperature: float = 0.0):
     """
     RetrievalQA チェーンを構築して返す
     k: 上位何件を検索するか
@@ -50,11 +51,17 @@ def get_qa_chain(k: int = 3, temperature: float = 0.0) -> RetrievalQA:
         HumanMessagePromptTemplate.from_template(human_template),
     ])
 
-    qa_chain = RetrievalQA.from_chain_type(
-        llm=ChatOpenAI(model_name="gpt-4.1", temperature=temperature),
-        chain_type="stuff",
-        retriever=retriever,
-        chain_type_kwargs={"prompt": prompt},
+    llm = ChatOpenAI(model_name="gpt-4.1", temperature=temperature)
+
+    # RAG チェーン（LCEL を利用）
+    qa_chain = (
+        {
+            "context": retriever,
+            "question": RunnablePassthrough(),
+        }
+        | prompt
+        | llm
+        | StrOutputParser()
     )
     return qa_chain
 
@@ -63,12 +70,8 @@ def answer_query(query: str) -> str:
     単発クエリを受け取って回答文字列だけを返す
     """
     chain = get_qa_chain()
-    # invoke は {'result': '…回答…'} という辞書を返す
-    output = chain.invoke({"query": query})
-    # 'result' キーの値を取り出して文字列で返す
-    if isinstance(output, dict) and "result" in output:
-        return output["result"]
-    # 万が一他の形式なら文字列化
+    # LCEL チェーンは文字列を直接受け取り、そのまま回答文字列を返す
+    output = chain.invoke(query)
     return str(output)
 
 if __name__ == "__main__":

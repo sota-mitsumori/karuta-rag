@@ -4,6 +4,9 @@ langchain
 langchain-community
 langchain-openai
 
+# Text splitting (new LangChain ecosystem)
+langchain-text-splitters
+
 # Vectore search
 faiss-cpu
 

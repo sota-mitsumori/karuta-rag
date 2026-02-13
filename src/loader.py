@@ -1,7 +1,7 @@
 import os
 
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import CharacterTextSplitter
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from .config import PDF_DIR, CHUNK_SIZE, CHUNK_OVERLAP
 
 def load_and_split():
@@ -17,7 +17,7 @@ def load_and_split():
         docs.extend(loader.load())
    
 
-    splitter = CharacterTextSplitter(
+    splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP
     )
