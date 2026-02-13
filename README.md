@@ -21,10 +21,10 @@
 ## 技術スタック
 
 - **言語**: Python 3.13.1
-- **RAGフレームワーク**: LangChain
-- **埋め込みモデル**: OpenAI Embeddings
+- **RAGフレームワーク**: LangChain（`langchain-core` / `langchain-community` / `langchain-openai` / `langchain-text-splitters`）
+- **埋め込みモデル**: OpenAI Embeddings（`langchain_openai.OpenAIEmbeddings`）
 - **ベクトルデータベース**: FAISS
-- **LLM**: GPT-4.1
+- **LLM**: GPT-5-mini（会話履歴を考慮したマルチターン対話）
 - **Webフレームワーク**: Flask
 - **PDF処理**: PyPDF
 
@@ -49,6 +49,10 @@ pip install -r requirements.txt
 ```env
 # OpenAI API設定
 OPENAI_API_KEY=your_openai_api_key_here
+
+# LINE Bot 設定（Web UI だけ使う場合は任意）
+LINE_CHANNEL_SECRET=your_line_channel_secret_here
+LINE_CHANNEL_ACCESS_TOKEN=your_line_channel_access_token_here
 ```
 
 ### 3. インデックスの構築
