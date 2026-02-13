@@ -22,3 +22,6 @@ tiktoken
 python-dotenv
 line-bot-sdk
 pytest
+
+# Supabase
+supabase

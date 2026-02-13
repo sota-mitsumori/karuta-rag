@@ -11,6 +11,9 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage
 # RAG チャット
 from src.qa_chain import answer_query
 
+# ログ保存
+from src.logger import log_chat
+
 # 環境変数ロード
 load_dotenv()
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
@@ -66,6 +69,21 @@ def ask():
     # 履歴を更新（直近の質問と回答を保存）
     WEB_CHAT_HISTORY.append((q, ans))
 
+    # Supabaseにログを保存（非同期で実行、エラーが発生してもレスポンスには影響しない）
+    try:
+        # IPアドレスを取得（ユーザー識別用）
+        user_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', 'unknown'))
+        log_chat(
+            question=q,
+            answer=ans,
+            channel="web",
+            user_id=f"web_{user_ip}",
+            metadata={"ip_address": user_ip}
+        )
+    except Exception as e:
+        # ログ保存のエラーは無視（アプリケーションの動作には影響しない）
+        print(f"[app] ログ保存エラー（無視）: {e}")
+
     return jsonify({"answer": ans})
 
 # LINE Webhook エンドポイント
@@ -116,6 +134,20 @@ def handle_message(event: MessageEvent):
     # ユーザーごとの履歴を更新
     history.append((user_text, bot_reply))
     LINE_CHAT_HISTORY[user_id] = history
+    
+    # Supabaseにログを保存（非同期で実行、エラーが発生してもレスポンスには影響しない）
+    try:
+        log_chat(
+            question=user_text,
+            answer=bot_reply,
+            channel="line",
+            user_id=user_id,
+            metadata={"line_user_id": user_id}
+        )
+    except Exception as e:
+        # ログ保存のエラーは無視（アプリケーションの動作には影響しない）
+        print(f"[app] ログ保存エラー（無視）: {e}")
+    
     # LINE に返信
     line_bot_api.reply_message(
         event.reply_token,
