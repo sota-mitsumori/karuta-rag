@@ -63,8 +63,12 @@ def ask():
 
     try:
         ans = answer_query(full_query)
-    except Exception:
-        ans = "エラーが発生しました。"
+    except Exception as e:
+        # エラーの詳細をログに記録
+        import traceback
+        print(f"[app] 質問処理エラー: {str(e)}")
+        print(f"[app] トレースバック:\n{traceback.format_exc()}")
+        ans = "申し訳ございません。回答の生成中にエラーが発生しました。しばらく時間をおいて再度お試しください。"
 
     # 履歴を更新（直近の質問と回答を保存）
     WEB_CHAT_HISTORY.append((q, ans))
@@ -128,8 +132,12 @@ def handle_message(event: MessageEvent):
 
     try:
         bot_reply = answer_query(full_query)
-    except Exception:
-        bot_reply = "申し訳ありません。回答できませんでした。"
+    except Exception as e:
+        # エラーの詳細をログに記録
+        import traceback
+        print(f"[app] LINE質問処理エラー: {str(e)}")
+        print(f"[app] トレースバック:\n{traceback.format_exc()}")
+        bot_reply = "申し訳ございません。回答の生成中にエラーが発生しました。しばらく時間をおいて再度お試しください。"
 
     # ユーザーごとの履歴を更新
     history.append((user_text, bot_reply))
