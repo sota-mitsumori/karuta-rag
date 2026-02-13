@@ -51,7 +51,7 @@ def get_qa_chain(k: int = 3, temperature: float = 0.0):
         HumanMessagePromptTemplate.from_template(human_template),
     ])
 
-    llm = ChatOpenAI(model_name="gpt-4.1", temperature=temperature)
+    llm = ChatOpenAI(model_name="gpt-5-mini", temperature=temperature)
 
     # RAG チェーン（LCEL を利用）
     qa_chain = (
