@@ -1,41 +1,264 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>競技かるたRAG Chat</title>
-  <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; }
-    #chat { border: 1px solid #ccc; padding: 1rem; height: 400px; overflow-y: scroll; }
-    #input { width: 100%; padding: .5rem; }
-  </style>
-</head>
-<body>
-  <h1>競技かるたルール質問チャット</h1>
-  <div id="chat"></div>
-  <form id="form">
-    <input id="input" autocomplete="off" placeholder="質問を入力…" />
-  </form>
-  <script>
-    const chat = document.getElementById("chat");
-    const form = document.getElementById("form");
-    const input = document.getElementById("input");
-    form.addEventListener("submit", async e => {
-      e.preventDefault();
-      const q = input.value.trim();
-      if (!q) return;
-      // ユーザー発言表示
-      chat.innerHTML += `<div><b>Q:</b> ${q}</div>`;
-      input.value = "";
-      // サーバへ問い合わせ
-      const res = await fetch("/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q })
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>競技かるたRAG Chat</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'media',
+      }
+    </script>
+  </head>
+  <body class="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 min-h-screen flex flex-col">
+    <header class="border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 backdrop-blur">
+      <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div>
+          <h1 class="text-lg font-semibold">競技かるたの競技規定ならびに競技会規定に関する質問チャット</h1>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400">
+            公式ルールの内容だけに基づいて回答します
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1">
+      <div class="max-w-3xl mx-auto px-4 py-4 flex flex-col h-[calc(100vh-8rem)]">
+        <!-- チャットエリア -->
+        <div
+          id="chat"
+          class="flex-1 overflow-y-auto space-y-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4"
+        >
+          <div class="text-xs text-zinc-400 dark:text-zinc-500 text-center">
+            競技かるたのルールに関する質問をどうぞ。
+          </div>
+        </div>
+
+        <!-- 入力フォーム -->
+        <form
+          id="form"
+          class="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-3"
+        >
+          <div class="flex items-end gap-2">
+            <div class="flex-1">
+              <label for="input" class="sr-only">質問</label>
+              <textarea
+                id="input"
+                rows="1"
+                class="w-full resize-none rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent"
+                placeholder="例）お手つきのルールを教えて"
+                style="min-height: 42px;"
+              ></textarea>
+            </div>
+            <button
+              type="submit"
+              id="sendButton"
+              class="inline-flex items-center justify-center rounded-lg bg-zinc-900 dark:bg-zinc-100 h-[42px] w-[42px] text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition shrink-0"
+            >
+              <!-- 送信アイコン（紙飛行機） -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="h-5 w-5"
+              >
+                <path d="M5 12L3 4l18 8-18 8 2-8zm0 0l7 4-2-4 2-4-7 4z" />
+              </svg>
+            </button>
+          </div>
+          <div class="mt-2 text-xs text-zinc-400 dark:text-zinc-500 text-center">
+            回答は以下の公式PDFに基づいています：
+            <span class="ml-1">競技規定</span>、
+            <span>競技細則</span>、
+            <span>競技細則（団体）</span>、
+            <span>競技会規定</span>
+          </div>
+        </form>
+      </div>
+    </main>
+
+    <script>
+      const chat = document.getElementById("chat");
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const sendButton = document.getElementById("sendButton");
+
+      // 初期状態でテキストエリアとボタンの高さを合わせる
+      sendButton.style.height = input.offsetHeight + "px";
+
+      function appendUserMessage(text) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "flex justify-end";
+        wrapper.innerHTML = `
+          <div class="max-w-[80%] rounded-2xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-3 py-2 text-sm shadow">
+            <div>${escapeHtml(text)}</div>
+          </div>
+        `;
+        chat.appendChild(wrapper);
+      }
+
+      function appendAssistantMessage(text) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "flex justify-start";
+        // 先頭・末尾の空白を削除し、各行の先頭の空白も削除
+        let trimmedText = String(text || "").trim();
+        // 各行の先頭の空白を削除
+        trimmedText = trimmedText.split('\n').map(line => line.trimStart()).join('\n');
+        
+        const container = document.createElement("div");
+        container.className = "flex items-start gap-2 max-w-[80%]";
+        
+        const avatar = document.createElement("div");
+        avatar.className = "mt-1 h-6 w-6 shrink-0 rounded-full bg-zinc-900 dark:bg-zinc-100 text-xs flex items-center justify-center text-white dark:text-zinc-900";
+        avatar.textContent = "K";
+        
+        const messageDiv = document.createElement("div");
+        messageDiv.className = "rounded-2xl bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-50 whitespace-pre-wrap";
+        messageDiv.textContent = trimmedText;
+        
+        container.appendChild(avatar);
+        container.appendChild(messageDiv);
+        wrapper.appendChild(container);
+        chat.appendChild(wrapper);
+      }
+
+      function appendLoadingBubble() {
+        const wrapper = document.createElement("div");
+        wrapper.className = "flex justify-start";
+        wrapper.innerHTML = `
+          <div class="flex items-start gap-2 max-w-[80%]">
+            <div class="mt-1 h-6 w-6 shrink-0 rounded-full bg-zinc-900 dark:bg-zinc-100 text-xs flex items-center justify-center text-white dark:text-zinc-900">
+              K
+            </div>
+            <div class="rounded-2xl bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
+              <span>考え中…</span>
+              <span class="flex gap-1">
+                <span class="h-1.5 w-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce"></span>
+                <span class="h-1.5 w-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:0.1s]"></span>
+                <span class="h-1.5 w-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:0.2s]"></span>
+              </span>
+            </div>
+          </div>
+        `;
+        chat.appendChild(wrapper);
+        return wrapper;
+      }
+
+      function scrollToBottom() {
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      function escapeHtml(str) {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const q = input.value.trim();
+        if (!q) return;
+
+        appendUserMessage(q);
+        input.value = "";
+        input.style.height = "42px";
+        sendButton.style.height = "42px";
+
+        // ローディング表示
+        const loadingBubble = appendLoadingBubble();
+        scrollToBottom();
+
+        sendButton.disabled = true;
+
+        try {
+          const res = await fetch("/ask", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question: q }),
+          });
+
+          const data = await res.json();
+
+          // ローディングを消してから回答バブルを追加
+          chat.removeChild(loadingBubble);
+          appendAssistantMessage(
+            (data && typeof data.answer === "string"
+              ? data.answer
+              : "エラーが発生しました。")
+          );
+        } catch (err) {
+          chat.removeChild(loadingBubble);
+          appendAssistantMessage("ネットワークエラーが発生しました。");
+        } finally {
+          sendButton.disabled = false;
+          scrollToBottom();
+        }
       });
-      const data = await res.json();
-      chat.innerHTML += `<div><b>A:</b> ${data.answer}</div><hr/>`;
-      chat.scrollTop = chat.scrollHeight;
-    });
-  </script>
-</body>
+
+      // テキストエリアの自動リサイズ
+      input.addEventListener("input", () => {
+        input.style.height = "auto";
+        const newHeight = Math.max(42, input.scrollHeight);
+        input.style.height = newHeight + "px";
+        // ボタンの高さも合わせる
+        sendButton.style.height = newHeight + "px";
+      });
+
+      // Enter で送信（Shift+Enter で改行）
+      // 日本語入力中（変換中）は isComposing / keyCode 229 を見て無視する
+      input.addEventListener("keydown", (e) => {
+        if (e.isComposing || e.keyCode === 229) {
+          return;
+        }
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          const q = input.value.trim();
+          if (!q) return;
+          
+          // 入力欄をクリア
+          input.value = "";
+          input.style.height = "42px";
+          sendButton.style.height = "42px";
+          
+          // フォーム送信を実行
+          appendUserMessage(q);
+          const loadingBubble = appendLoadingBubble();
+          scrollToBottom();
+          sendButton.disabled = true;
+
+          fetch("/ask", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question: q }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              chat.removeChild(loadingBubble);
+              appendAssistantMessage(
+                (data && typeof data.answer === "string"
+                  ? data.answer
+                  : "エラーが発生しました。")
+              );
+            })
+            .catch((err) => {
+              chat.removeChild(loadingBubble);
+              appendAssistantMessage("ネットワークエラーが発生しました。");
+            })
+            .finally(() => {
+              sendButton.disabled = false;
+              scrollToBottom();
+            });
+        }
+      });
+    </script>
+  </body>
 </html>
