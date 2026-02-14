@@ -1,5 +1,6 @@
 # app.py
 import os
+import secrets
 from flask import Flask, request, abort, render_template, jsonify
 from dotenv import load_dotenv
 
@@ -11,8 +12,8 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage
 # RAG チャット
 from src.qa_chain import answer_query
 
-# ログ保存
-from src.logger import log_chat
+# ログ保存・共有会話
+from src.logger import log_chat, save_shared_conversation, get_shared_conversation
 
 # 環境変数ロード
 load_dotenv()
@@ -37,6 +38,37 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+# 会話をシェア用URLで保存
+@app.route("/api/share", methods=["POST"])
+def api_share():
+    data = request.get_json() or {}
+    messages = data.get("messages", [])
+    if not isinstance(messages, list) or len(messages) == 0:
+        return jsonify({"error": "messages が必要です（1件以上の Q&A）"}), 400
+    # 最大50件・各テキスト長制限
+    messages = messages[:50]
+    out = []
+    for m in messages:
+        q = (m.get("question") or "")[:5000]
+        a = (m.get("answer") or "")[:50000]
+        out.append({"question": q, "answer": a})
+    token = secrets.token_urlsafe(16)
+    if not save_shared_conversation(token, out):
+        return jsonify({"error": "保存に失敗しました"}), 500
+    base = request.url_root.rstrip("/")
+    url = f"{base}/s/{token}"
+    return jsonify({"token": token, "url": url})
+
+
+# シェアされた会話の閲覧
+@app.route("/s/<token>")
+def view_shared(token):
+    messages = get_shared_conversation(token)
+    if messages is None:
+        return render_template("share.html", error=True, messages=[]), 404
+    return render_template("share.html", error=False, messages=messages)
 
 @app.route("/ask", methods=["POST"])
 def ask():
