@@ -1,35 +1,22 @@
-# Gunicorn設定ファイル
-# 本番環境でのタイムアウト設定を延長
-
 import os
-import multiprocessing
 
-# ワーカーの数（CPUコア数 * 2 + 1、最小1）
-workers = max(multiprocessing.cpu_count() * 2 + 1, 1)
+# ワーカー数は「1」に固定（メモリ節約のため）
+workers = 1
 
-# ワーカークラス（同期ワーカー）
-worker_class = "sync"
+# ワーカークラスを「gthread」に変更（並行処理のため）
+# OpenAIなどのAPI待ち中も、他の人のアクセスを処理できるようにします
+worker_class = "gthread"
 
-# タイムアウト時間（秒）- OpenAI APIの応答を待つため120秒に設定
+# スレッド数を指定（1つのワーカーの中で4つの処理を同時進行）
+threads = 5
+
+# タイムアウト（そのまま維持）
 timeout = 120
-
-# キープアライブタイムアウト
 keepalive = 5
 
-# ワーカーの接続数
-worker_connections = 1000
-
-# ログレベル
+# その他（そのまま維持）
 loglevel = "info"
-
-# アクセスログ
 accesslog = "-"
-
-# エラーログ
 errorlog = "-"
-
-# プロセス名
 proc_name = "karuta-rag"
-
-# バインディング（環境変数PORTから取得、デフォルトは5000）
 bind = f"0.0.0.0:{os.getenv('PORT', '5000')}"
