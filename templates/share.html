@@ -5,9 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>シェアされた会話 - 競技かるたRAG</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { darkMode: 'media' }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
     <style>
+      html, body { height: 100%; margin: 0; }
+      .share-layout {
+        height: 100dvh;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .share-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
       .markdown-body p { margin: 0.5em 0; }
       .markdown-body p:first-child { margin-top: 0; }
       .markdown-body p:last-child { margin-bottom: 0; }
@@ -21,22 +38,24 @@
       .markdown-body pre code { padding: 0; background: none; }
     </style>
   </head>
-  <body class="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 min-h-screen">
-    <div class="max-w-3xl mx-auto px-4 py-6">
-      <header class="border-b border-zinc-200 dark:border-zinc-800 pb-4 mb-6">
-        <h1 class="text-lg font-semibold">競技かるたRAG - シェアされた会話</h1>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">公式ルールに基づくQ&Aの記録です</p>
-      </header>
-
-      <div id="content">
-        {% if error %}
-        <p class="text-zinc-600 dark:text-zinc-400">このリンクは無効か、期限切れです。</p>
-        {% else %}
-        <div id="conversation" class="space-y-6"></div>
-        {% endif %}
+  <body class="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 share-layout">
+    <header class="shrink-0 border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 backdrop-blur px-3 sm:px-4 py-2 sm:py-3">
+      <div class="max-w-3xl mx-auto">
+        <h1 class="text-sm sm:text-lg font-semibold">競技かるたRAG - シェアされた会話</h1>
+        <p class="text-xs text-zinc-500 dark:text-zinc-400">公式ルールに基づくQ&Aの記録です</p>
       </div>
+    </header>
 
-      <footer class="mt-8 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+    <div id="content" class="flex-1 min-h-0 flex flex-col max-w-3xl w-full mx-auto px-3 sm:px-4">
+      {% if error %}
+      <div class="share-scroll py-6">
+        <p class="text-zinc-600 dark:text-zinc-400">このリンクは無効か、期限切れです。</p>
+      </div>
+      {% else %}
+      <div id="conversation" class="share-scroll space-y-4 py-3"></div>
+      {% endif %}
+
+      <footer class="shrink-0 border-t border-zinc-200 dark:border-zinc-800 py-3 mt-auto">
         <a href="/" class="text-sm text-zinc-600 dark:text-zinc-400 hover:underline">← チャットで質問する</a>
       </footer>
     </div>
@@ -67,20 +86,23 @@
         }
 
         messages.forEach(function(m) {
-          var q = m.question || "";
-          var a = m.answer || "";
-          var block = document.createElement("div");
-          block.className = "rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden";
-          block.innerHTML =
-            '<div class="bg-zinc-100 dark:bg-zinc-800 px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">' +
-              '<span class="text-xs font-medium text-zinc-500 dark:text-zinc-400">質問</span>' +
-              '<div class="mt-1 text-sm text-zinc-900 dark:text-zinc-50">' + escapeHtml(q) + '</div>' +
-            '</div>' +
-            '<div class="px-4 py-3 bg-white dark:bg-zinc-900">' +
-              '<span class="text-xs font-medium text-zinc-500 dark:text-zinc-400">回答</span>' +
-              '<div class="markdown-body mt-1 text-sm text-zinc-800 dark:text-zinc-200">' + renderMarkdown(a) + '</div>' +
-            '</div>';
-          container.appendChild(block);
+          var q = (m.question || "").trim();
+          var a = (m.answer || "").trim();
+
+          var userWrap = document.createElement("div");
+          userWrap.className = "flex justify-end";
+          userWrap.innerHTML = '<div class="max-w-[85%] sm:max-w-[80%] rounded-2xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-3 py-2 text-sm shadow">' +
+            '<div>' + escapeHtml(q) + '</div></div>';
+          container.appendChild(userWrap);
+
+          var asstWrap = document.createElement("div");
+          asstWrap.className = "flex justify-start";
+          var asstInner = '<div class="flex items-start gap-2 max-w-[85%] sm:max-w-[80%]">' +
+            '<div class="mt-1 h-6 w-6 shrink-0 rounded-full bg-zinc-900 dark:bg-zinc-100 text-xs flex items-center justify-center text-white dark:text-zinc-900">K</div>' +
+            '<div class="markdown-body rounded-2xl bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-50">' +
+            (renderMarkdown(a) || escapeHtml(a)) + '</div></div>';
+          asstWrap.innerHTML = asstInner;
+          container.appendChild(asstWrap);
         });
       })();
     </script>
