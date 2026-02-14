@@ -262,7 +262,7 @@
         wrapper.className = "flex justify-center my-2";
         wrapper.innerHTML =
           '<div class="max-w-[85%] rounded-xl border-2 border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-950/50 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">' +
-          '<p class="font-medium">1日あたりの質問回数に達しました</p>' +
+          '<p class="font-medium">1日あたりの質問回数の上限に達しました</p>' +
           '<p class="mt-1 text-xs opacity-90">' + escapeHtml(message || "明日またお試しください。") + '</p>' +
           '</div>';
         chat.appendChild(wrapper);
@@ -306,7 +306,7 @@
           // レートリミット（429）のときは専用メッセージを表示
           if (res.status === 429) {
             chat.removeChild(loadingBubble);
-            var msg = (data && data.message) ? data.message : "1日あたりの質問回数に達しました。明日またお試しください。";
+            var msg = (data && data.message) ? data.message : "1日あたりの質問回数の上限に達しました。明日またお試しください。";
             appendRateLimitNotice(msg);
             showToast(msg);
             sendButton.disabled = false;
@@ -370,7 +370,7 @@
             .then(function(result) {
               chat.removeChild(loadingBubble);
               if (result.status === 429) {
-                var msg = (result.data && result.data.message) ? result.data.message : "1日あたりの質問回数上限に達しました。明日またお試しください。";
+                var msg = (result.data && result.data.message) ? result.data.message : "1日あたりの質問回数の上限に達しました。明日またお試しください。";
                 appendRateLimitNotice(msg);
                 showToast(msg);
                 return;
