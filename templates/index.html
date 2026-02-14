@@ -2,130 +2,223 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>競技かるたRAG Chat</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Markdown: marked + DOMPurify -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
     <script>
       tailwind.config = {
         darkMode: 'media',
       }
     </script>
+    <style>
+      /* スマホで入力エリアを常に下部に固定し、チャットのみスクロール */
+      .chat-layout {
+        min-height: 100dvh;
+        min-height: 100vh;
+      }
+      .chat-scroll {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .safe-area-padding { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+      .safe-area-padding-bottom { padding-bottom: env(safe-area-inset-bottom); }
+      /* Markdown コンテンツ用 */
+      .markdown-body p { margin: 0.5em 0; }
+      .markdown-body p:first-child { margin-top: 0; }
+      .markdown-body p:last-child { margin-bottom: 0; }
+      .markdown-body ul, .markdown-body ol { margin: 0.5em 0; padding-left: 1.5em; }
+      .markdown-body li { margin: 0.25em 0; }
+      .markdown-body strong { font-weight: 600; }
+      .markdown-body code { font-size: 0.9em; padding: 0.15em 0.35em; border-radius: 4px; background: rgba(0,0,0,0.06); }
+      .dark .markdown-body code { background: rgba(255,255,255,0.1); }
+      .markdown-body pre { margin: 0.5em 0; padding: 0.75em; border-radius: 8px; overflow-x: auto; background: rgba(0,0,0,0.04); }
+      .dark .markdown-body pre { background: rgba(255,255,255,0.06); }
+      .markdown-body pre code { padding: 0; background: none; }
+    </style>
   </head>
-  <body class="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 min-h-screen flex flex-col">
-    <header class="border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 backdrop-blur">
-      <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-        <div>
-          <h1 class="text-lg font-semibold">競技かるたの競技規定ならびに競技会規定に関する質問チャット</h1>
-          <p class="text-xs text-zinc-500 dark:text-zinc-400">
-            公式ルールの内容だけに基づいて回答します
-          </p>
-        </div>
+  <body class="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 flex flex-col chat-layout">
+    <header class="shrink-0 border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 backdrop-blur safe-area-padding">
+      <div class="max-w-3xl mx-auto px-3 sm:px-4 py-2 sm:py-3">
+        <h1 class="text-sm sm:text-lg font-semibold">競技かるたの競技規定ならびに競技会規定に関する質問チャット</h1>
+        <p class="text-xs text-zinc-500 dark:text-zinc-400">
+          公式ルールの内容だけに基づいて回答します
+        </p>
       </div>
     </header>
 
-    <main class="flex-1">
-      <div class="max-w-3xl mx-auto px-4 py-4 flex flex-col h-[calc(100vh-8rem)]">
-        <!-- チャットエリア -->
-        <div
-          id="chat"
-          class="flex-1 overflow-y-auto space-y-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4"
-        >
-          <div class="text-xs text-zinc-400 dark:text-zinc-500 text-center">
-            競技かるたのルールに関する質問をどうぞ。
-          </div>
+    <!-- チャットエリア（スクロールのみ） -->
+    <div class="flex-1 min-h-0 flex flex-col max-w-3xl w-full mx-auto px-3 sm:px-4 flex-grow">
+      <div
+        id="chat"
+        class="chat-scroll flex-1 min-h-0 space-y-4 py-3"
+      >
+        <div id="chat-placeholder" class="text-xs text-zinc-400 dark:text-zinc-500 text-center py-4">
+          競技かるたのルールに関する質問をどうぞ。
         </div>
+      </div>
 
-        <!-- 入力フォーム -->
-        <form
-          id="form"
-          class="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-3"
-        >
+      <!-- 入力フォーム（常に下部に表示） -->
+      <div class="shrink-0 pt-2 pb-3 sm:pb-4 bg-zinc-50 dark:bg-zinc-900 safe-area-padding-bottom">
+        <form id="form" class="max-w-3xl">
           <div class="flex items-end gap-2">
-            <div class="flex-1">
+            <div class="flex-1 min-w-0">
               <label for="input" class="sr-only">質問</label>
               <textarea
                 id="input"
                 rows="1"
-                class="w-full resize-none rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent"
+                class="w-full resize-none rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent"
                 placeholder="例）お手つきのルールを教えて"
-                style="min-height: 42px;"
+                style="min-height: 44px; max-height: 120px;"
               ></textarea>
             </div>
             <button
               type="submit"
               id="sendButton"
-              class="inline-flex items-center justify-center rounded-lg bg-zinc-900 dark:bg-zinc-100 h-[42px] w-[42px] text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition shrink-0"
+              class="inline-flex items-center justify-center rounded-xl bg-zinc-900 dark:bg-zinc-100 h-[44px] w-[44px] min-h-[44px] text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition shrink-0"
             >
-              <!-- 送信アイコン（紙飛行機） -->
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="h-5 w-5"
-              >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
                 <path d="M5 12L3 4l18 8-18 8 2-8zm0 0l7 4-2-4 2-4-7 4z" />
               </svg>
             </button>
           </div>
-          <div class="mt-2 text-xs text-zinc-400 dark:text-zinc-500 text-center">
-            回答は以下の公式PDFに基づいています：
-            <span class="ml-1">競技規定</span>、
-            <span>競技細則</span>、
-            <span>競技細則（団体）</span>、
-            <span>競技会規定</span>
-          </div>
+          <p class="mt-1.5 text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500 text-center">
+            回答は競技規定・競技細則・競技会規定に基づきます。AIは間違えることがあります。必ずご自身でもルールを確認してください。
+          </p>
         </form>
       </div>
-    </main>
+    </div>
+
+    <!-- シェア用トースト -->
+    <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 text-sm opacity-0 pointer-events-none transition-opacity z-50" role="status" aria-live="polite">
+      コピーしました
+    </div>
 
     <script>
       const chat = document.getElementById("chat");
       const form = document.getElementById("form");
       const input = document.getElementById("input");
       const sendButton = document.getElementById("sendButton");
+      const toast = document.getElementById("toast");
 
-      // 初期状態でテキストエリアとボタンの高さを合わせる
-      sendButton.style.height = input.offsetHeight + "px";
+      // 一連の会話（シェア用URL発行に使用）
+      var conversationHistory = [];
+
+      if (sendButton && input) sendButton.style.height = input.offsetHeight + "px";
+
+      // Markdown を安全に HTML に変換
+      function renderMarkdown(text) {
+        var raw = String(text || "").trim();
+        if (!raw) return "";
+        if (typeof marked === "undefined" || typeof DOMPurify === "undefined") {
+          return escapeHtml(raw).replace(/\n/g, "<br>");
+        }
+        var html = (marked.parse || marked)(raw, { gfm: true, breaks: true });
+        return DOMPurify.sanitize(html, { ALLOWED_TAGS: ["p","br","strong","em","code","pre","ul","ol","li","h1","h2","h3","a","blockquote"] });
+      }
+
+      function showToast(message) {
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.remove("opacity-0");
+        setTimeout(function() { toast.classList.add("opacity-0"); }, 2000);
+      }
+
+      function copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function() { showToast("コピーしました"); });
+        } else {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          showToast("コピーしました");
+        }
+      }
+
+      function shareConversationAsUrl(clickedBtn) {
+        if (conversationHistory.length === 0) return;
+        if (clickedBtn) { clickedBtn.disabled = true; }
+        fetch("/api/share", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: conversationHistory })
+        })
+          .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+          .then(function(result) {
+            if (!result.ok) {
+              showToast(result.data.error || "発行に失敗しました");
+              if (clickedBtn) clickedBtn.disabled = false;
+              return;
+            }
+            var url = result.data.url;
+            if (navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent)) {
+              navigator.share({
+                title: "競技かるたRAG - 会話",
+                text: "競技かるたRAGの会話をシェアしました",
+                url: url
+              }).then(function() { showToast("シェアしました"); }).catch(function() {
+                copyToClipboard(url);
+                showToast("URLをコピーしました");
+              });
+            } else {
+              copyToClipboard(url);
+              showToast("URLをコピーしました");
+            }
+            if (clickedBtn) clickedBtn.disabled = false;
+          })
+          .catch(function() {
+            showToast("発行に失敗しました");
+            if (clickedBtn) clickedBtn.disabled = false;
+          });
+      }
 
       function appendUserMessage(text) {
-        const wrapper = document.createElement("div");
+        var placeholder = document.getElementById("chat-placeholder");
+        if (placeholder && placeholder.parentNode) placeholder.remove();
+        var wrapper = document.createElement("div");
         wrapper.className = "flex justify-end";
-        wrapper.innerHTML = `
-          <div class="max-w-[80%] rounded-2xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-3 py-2 text-sm shadow">
-            <div>${escapeHtml(text)}</div>
-          </div>
-        `;
+        wrapper.innerHTML = '<div class="max-w-[85%] sm:max-w-[80%] rounded-2xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-3 py-2 text-sm shadow"><div>' + escapeHtml(text) + '</div></div>';
         chat.appendChild(wrapper);
       }
 
-      function appendAssistantMessage(text) {
+      function appendAssistantMessage(question, text) {
         const wrapper = document.createElement("div");
         wrapper.className = "flex justify-start";
-        // 先頭・末尾の空白を削除し、各行の先頭の空白も削除
-        let trimmedText = String(text || "").trim();
-        // 各行の先頭の空白を削除
-        trimmedText = trimmedText.split('\n').map(line => line.trimStart()).join('\n');
-        
+        const trimmedText = String(text || "").trim().split('\n').map(function(l) { return l.trimStart(); }).join('\n');
+        const html = renderMarkdown(trimmedText);
+
         const container = document.createElement("div");
-        container.className = "flex items-start gap-2 max-w-[80%]";
-        
+        container.className = "flex items-start gap-2 max-w-[85%] sm:max-w-[80%]";
         const avatar = document.createElement("div");
         avatar.className = "mt-1 h-6 w-6 shrink-0 rounded-full bg-zinc-900 dark:bg-zinc-100 text-xs flex items-center justify-center text-white dark:text-zinc-900";
         avatar.textContent = "K";
-        
+        const contentWrap = document.createElement("div");
+        contentWrap.className = "flex-1 min-w-0";
         const messageDiv = document.createElement("div");
-        messageDiv.className = "rounded-2xl bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-50 whitespace-pre-wrap";
-        messageDiv.textContent = trimmedText;
-        
+        messageDiv.className = "markdown-body rounded-2xl bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-50";
+        messageDiv.innerHTML = html || escapeHtml(trimmedText);
+
+        const shareBtn = document.createElement("button");
+        shareBtn.type = "button";
+        shareBtn.className = "mt-1 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 flex items-center gap-1";
+        shareBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> 会話をURLでシェア';
+        shareBtn.addEventListener("click", function() { shareConversationAsUrl(shareBtn); });
+
+        contentWrap.appendChild(messageDiv);
+        contentWrap.appendChild(shareBtn);
         container.appendChild(avatar);
-        container.appendChild(messageDiv);
+        container.appendChild(contentWrap);
         wrapper.appendChild(container);
         chat.appendChild(wrapper);
+        conversationHistory.push({ question: question, answer: text });
       }
 
       function appendLoadingBubble() {
@@ -190,14 +283,11 @@
 
           // ローディングを消してから回答バブルを追加
           chat.removeChild(loadingBubble);
-          appendAssistantMessage(
-            (data && typeof data.answer === "string"
-              ? data.answer
-              : "エラーが発生しました。")
-          );
+          var ans = (data && typeof data.answer === "string") ? data.answer : "エラーが発生しました。";
+          appendAssistantMessage(q, ans);
         } catch (err) {
           chat.removeChild(loadingBubble);
-          appendAssistantMessage("ネットワークエラーが発生しました。");
+          appendAssistantMessage(q, "ネットワークエラーが発生しました。");
         } finally {
           sendButton.disabled = false;
           scrollToBottom();
@@ -243,15 +333,12 @@
             .then((res) => res.json())
             .then((data) => {
               chat.removeChild(loadingBubble);
-              appendAssistantMessage(
-                (data && typeof data.answer === "string"
-                  ? data.answer
-                  : "エラーが発生しました。")
-              );
+              var ans = (data && typeof data.answer === "string") ? data.answer : "エラーが発生しました。";
+              appendAssistantMessage(q, ans);
             })
             .catch((err) => {
               chat.removeChild(loadingBubble);
-              appendAssistantMessage("ネットワークエラーが発生しました。");
+              appendAssistantMessage(q, "ネットワークエラーが発生しました。");
             })
             .finally(() => {
               sendButton.disabled = false;

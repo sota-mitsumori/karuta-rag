@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>シェアされた会話 - 競技かるたRAG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+    <style>
+      .markdown-body p { margin: 0.5em 0; }
+      .markdown-body p:first-child { margin-top: 0; }
+      .markdown-body p:last-child { margin-bottom: 0; }
+      .markdown-body ul, .markdown-body ol { margin: 0.5em 0; padding-left: 1.5em; }
+      .markdown-body li { margin: 0.25em 0; }
+      .markdown-body strong { font-weight: 600; }
+      .markdown-body code { font-size: 0.9em; padding: 0.15em 0.35em; border-radius: 4px; background: rgba(0,0,0,0.06); }
+      .dark .markdown-body code { background: rgba(255,255,255,0.1); }
+      .markdown-body pre { margin: 0.5em 0; padding: 0.75em; border-radius: 8px; overflow-x: auto; background: rgba(0,0,0,0.04); }
+      .dark .markdown-body pre { background: rgba(255,255,255,0.06); }
+      .markdown-body pre code { padding: 0; background: none; }
+    </style>
+  </head>
+  <body class="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 min-h-screen">
+    <div class="max-w-3xl mx-auto px-4 py-6">
+      <header class="border-b border-zinc-200 dark:border-zinc-800 pb-4 mb-6">
+        <h1 class="text-lg font-semibold">競技かるたRAG - シェアされた会話</h1>
+        <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">公式ルールに基づくQ&Aの記録です</p>
+      </header>
+
+      <div id="content">
+        {% if error %}
+        <p class="text-zinc-600 dark:text-zinc-400">このリンクは無効か、期限切れです。</p>
+        {% else %}
+        <div id="conversation" class="space-y-6"></div>
+        {% endif %}
+      </div>
+
+      <footer class="mt-8 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+        <a href="/" class="text-sm text-zinc-600 dark:text-zinc-400 hover:underline">← チャットで質問する</a>
+      </footer>
+    </div>
+
+    <script id="share-data" type="application/json">{{ (messages if not error else []) | tojson }}</script>
+    <script>
+      (function() {
+        var el = document.getElementById("share-data");
+        var messages = el ? JSON.parse(el.textContent) : [];
+        var container = document.getElementById("conversation");
+        if (!container || !Array.isArray(messages) || messages.length === 0) return;
+
+        function escapeHtml(str) {
+          return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+        }
+        function renderMarkdown(text) {
+          var raw = String(text || "").trim();
+          if (!raw) return "";
+          if (typeof marked === "undefined" || typeof DOMPurify === "undefined")
+            return escapeHtml(raw).replace(/\n/g, "<br>");
+          var html = (marked.parse || marked)(raw, { gfm: true, breaks: true });
+          return DOMPurify.sanitize(html, { ALLOWED_TAGS: ["p","br","strong","em","code","pre","ul","ol","li","h1","h2","h3","a","blockquote"] });
+        }
+
+        messages.forEach(function(m) {
+          var q = m.question || "";
+          var a = m.answer || "";
+          var block = document.createElement("div");
+          block.className = "rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden";
+          block.innerHTML =
+            '<div class="bg-zinc-100 dark:bg-zinc-800 px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">' +
+              '<span class="text-xs font-medium text-zinc-500 dark:text-zinc-400">質問</span>' +
+              '<div class="mt-1 text-sm text-zinc-900 dark:text-zinc-50">' + escapeHtml(q) + '</div>' +
+            '</div>' +
+            '<div class="px-4 py-3 bg-white dark:bg-zinc-900">' +
+              '<span class="text-xs font-medium text-zinc-500 dark:text-zinc-400">回答</span>' +
+              '<div class="markdown-body mt-1 text-sm text-zinc-800 dark:text-zinc-200">' + renderMarkdown(a) + '</div>' +
+            '</div>';
+          container.appendChild(block);
+        });
+      })();
+    </script>
+  </body>
+</html>

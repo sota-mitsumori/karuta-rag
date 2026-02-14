@@ -82,3 +82,37 @@ def log_chat(
     except Exception as e:
         print(f"[logger] ログの保存中にエラーが発生しました: {e}")
         return False
+
+
+def save_shared_conversation(token: str, messages: list[dict]) -> bool:
+    """
+    シェア用会話をSupabaseに保存
+    messages: [{"question": "...", "answer": "..."}, ...]
+    """
+    if not supabase_client:
+        return False
+    try:
+        supabase_client.table("shared_conversations").insert({
+            "token": token,
+            "messages": messages,
+        }).execute()
+        return True
+    except Exception as e:
+        print(f"[logger] 共有会話の保存に失敗: {e}")
+        return False
+
+
+def get_shared_conversation(token: str) -> Optional[list[dict]]:
+    """
+    トークンに紐づく会話を取得。存在しなければ None
+    """
+    if not supabase_client:
+        return None
+    try:
+        r = supabase_client.table("shared_conversations").select("messages").eq("token", token).limit(1).execute()
+        if not r.data or len(r.data) == 0:
+            return None
+        return r.data[0].get("messages")
+    except Exception as e:
+        print(f"[logger] 共有会話の取得に失敗: {e}")
+        return None
