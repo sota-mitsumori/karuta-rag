@@ -254,6 +254,20 @@
         chat.scrollTop = chat.scrollHeight;
       }
 
+      // レートリミット到達時用の通知をチャットに表示
+      function appendRateLimitNotice(message) {
+        var placeholder = document.getElementById("chat-placeholder");
+        if (placeholder && placeholder.parentNode) placeholder.remove();
+        var wrapper = document.createElement("div");
+        wrapper.className = "flex justify-center my-2";
+        wrapper.innerHTML =
+          '<div class="max-w-[85%] rounded-xl border-2 border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-950/50 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">' +
+          '<p class="font-medium">1日あたりの質問回数に達しました</p>' +
+          '<p class="mt-1 text-xs opacity-90">' + escapeHtml(message || "明日またお試しください。") + '</p>' +
+          '</div>';
+        chat.appendChild(wrapper);
+      }
+
       function escapeHtml(str) {
         return str
           .replace(/&/g, "&amp;")
@@ -284,9 +298,21 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ question: q }),
+            credentials: "include",
           });
 
-          const data = await res.json();
+          const data = await res.json().catch(function() { return {}; });
+
+          // レートリミット（429）のときは専用メッセージを表示
+          if (res.status === 429) {
+            chat.removeChild(loadingBubble);
+            var msg = (data && data.message) ? data.message : "1日あたりの質問回数に達しました。明日またお試しください。";
+            appendRateLimitNotice(msg);
+            showToast(msg);
+            sendButton.disabled = false;
+            scrollToBottom();
+            return;
+          }
 
           // ローディングを消してから回答バブルを追加
           chat.removeChild(loadingBubble);
@@ -336,14 +362,23 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ question: q }),
+            credentials: "include",
           })
-            .then((res) => res.json())
-            .then((data) => {
+            .then(function(res) {
+              return res.json().catch(function() { return {}; }).then(function(data) { return { status: res.status, data: data }; });
+            })
+            .then(function(result) {
               chat.removeChild(loadingBubble);
-              var ans = (data && typeof data.answer === "string") ? data.answer : "エラーが発生しました。";
+              if (result.status === 429) {
+                var msg = (result.data && result.data.message) ? result.data.message : "1日あたりの質問回数上限に達しました。明日またお試しください。";
+                appendRateLimitNotice(msg);
+                showToast(msg);
+                return;
+              }
+              var ans = (result.data && typeof result.data.answer === "string") ? result.data.answer : "エラーが発生しました。";
               appendAssistantMessage(q, ans);
             })
-            .catch((err) => {
+            .catch(function(err) {
               chat.removeChild(loadingBubble);
               appendAssistantMessage(q, "ネットワークエラーが発生しました。");
             })
