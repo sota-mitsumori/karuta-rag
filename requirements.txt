@@ -15,6 +15,7 @@ pypdf
 
 # Web server
 flask
+flask-cors
 gunicorn
 
 # others

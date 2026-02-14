@@ -2,6 +2,7 @@
 import os
 import secrets
 from flask import Flask, request, abort, render_template, jsonify
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 # LINE SDK
@@ -21,6 +22,13 @@ LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 
 app = Flask(__name__)
+# Vercel など別オリジンから API を叩けるように CORS を有効化
+# 本番で特定ドメインのみ許可する場合: 環境変数 CORS_ORIGINS に "https://xxx.vercel.app" などをカンマ区切りで指定
+_cors_origins = os.getenv("CORS_ORIGINS", "").strip()
+if _cors_origins:
+    CORS(app, origins=[o.strip() for o in _cors_origins.split(",")], supports_credentials=True)
+else:
+    CORS(app)  # 未設定時は全オリジン許可（開発用）
 
 # Web UI 用の簡易チャット履歴（プロセス内メモリ）
 # [(user_question, assistant_answer), ...] の形で直近の会話を保持
@@ -57,7 +65,13 @@ def api_share():
     token = secrets.token_urlsafe(16)
     if not save_shared_conversation(token, out):
         return jsonify({"error": "保存に失敗しました"}), 500
-    base = request.url_root.rstrip("/")
+    # Vercel 等のプロキシ経由のときは表向きのホストで共有URLを組み立てる
+    forwarded_host = request.headers.get("X-Forwarded-Host")
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", "https")
+    if forwarded_host:
+        base = f"{forwarded_proto}://{forwarded_host.split(',')[0].strip()}".rstrip("/")
+    else:
+        base = request.url_root.rstrip("/")
     url = f"{base}/s/{token}"
     return jsonify({"token": token, "url": url})
 
