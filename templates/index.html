@@ -15,17 +15,24 @@
       }
     </script>
     <style>
-      /* スマホで入力エリアを常に下部に固定し、チャットのみスクロール */
+      /* スマホで入力エリアを常に画面最下部に固定。チャット部分だけスクロール */
+      html, body { height: 100%; margin: 0; }
       .chat-layout {
-        min-height: 100dvh;
-        min-height: 100vh;
+        height: 100dvh;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
       }
       .chat-scroll {
+        flex: 1;
+        min-height: 0;
         overflow-y: auto;
+        overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
       }
       .safe-area-padding { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
-      .safe-area-padding-bottom { padding-bottom: env(safe-area-inset-bottom); }
+      .safe-area-padding-bottom { padding-bottom: max(env(safe-area-inset-bottom), 8px); }
       /* Markdown コンテンツ用 */
       .markdown-body p { margin: 0.5em 0; }
       .markdown-body p:first-child { margin-top: 0; }
@@ -40,29 +47,29 @@
       .markdown-body pre code { padding: 0; background: none; }
     </style>
   </head>
-  <body class="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 flex flex-col chat-layout">
+  <body class="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 chat-layout">
     <header class="shrink-0 border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 backdrop-blur safe-area-padding">
       <div class="max-w-3xl mx-auto px-3 sm:px-4 py-2 sm:py-3">
-        <h1 class="text-sm sm:text-lg font-semibold">競技かるたの競技規定ならびに競技会規定に関する質問チャット</h1>
+        <h1 class="text-sm sm:text-lg font-semibold">競技かるたの競技規定ならびに競技会規定に関するChatBot</h1>
         <p class="text-xs text-zinc-500 dark:text-zinc-400">
-          公式ルールの内容だけに基づいて回答します
+          公式ルールの内容に基づいて回答します
         </p>
       </div>
     </header>
 
-    <!-- チャットエリア（スクロールのみ） -->
-    <div class="flex-1 min-h-0 flex flex-col max-w-3xl w-full mx-auto px-3 sm:px-4 flex-grow">
+    <!-- チャットエリア（ここだけスクロール）＋ 入力は常に下部 -->
+    <div class="flex-1 min-h-0 flex flex-col max-w-3xl w-full mx-auto px-3 sm:px-4">
       <div
         id="chat"
-        class="chat-scroll flex-1 min-h-0 space-y-4 py-3"
+        class="chat-scroll space-y-4 py-3 pb-2"
       >
         <div id="chat-placeholder" class="text-xs text-zinc-400 dark:text-zinc-500 text-center py-4">
           競技かるたのルールに関する質問をどうぞ。
         </div>
       </div>
 
-      <!-- 入力フォーム（常に下部に表示） -->
-      <div class="shrink-0 pt-2 pb-3 sm:pb-4 bg-zinc-50 dark:bg-zinc-900 safe-area-padding-bottom">
+      <!-- 入力フォーム（画面最下部に固定・スクロールしない） -->
+      <div class="shrink-0 pt-2 bg-zinc-50 dark:bg-zinc-900 safe-area-padding-bottom">
         <form id="form" class="max-w-3xl">
           <div class="flex items-end gap-2">
             <div class="flex-1 min-w-0">
