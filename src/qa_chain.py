@@ -42,7 +42,7 @@ def _format_context_with_sources(docs: list[Document]) -> str:
     return "\n\n".join(parts)
 
 
-def get_qa_chain(k: int = 3, temperature: float = 0.0):
+def get_qa_chain(k: int = 7, temperature: float = 0.0):
     """
     RetrievalQA チェーンを構築して返す
     k: 上位何件を検索するか
