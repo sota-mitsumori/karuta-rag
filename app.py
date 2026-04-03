@@ -42,10 +42,15 @@ LINE_CHAT_HISTORY: dict[str, list[tuple[str, str]]] = {}
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
+# GA
+_ga_env = (os.getenv("GA_MEASUREMENT_ID") or "").strip()
+GA_MEASUREMENT_ID = _ga_env if _ga_env else "G-3R1H6X7CDK"
+
+
 # 既存の Web UI
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", ga_measurement_id=GA_MEASUREMENT_ID)
 
 
 # 会話をシェア用URLで保存
@@ -55,7 +60,6 @@ def api_share():
     messages = data.get("messages", [])
     if not isinstance(messages, list) or len(messages) == 0:
         return jsonify({"error": "messages が必要です（1件以上の Q&A）"}), 400
-    # 最大50件・各テキスト長制限
     messages = messages[:50]
     out = []
     for m in messages:
@@ -65,7 +69,6 @@ def api_share():
     token = secrets.token_urlsafe(16)
     if not save_shared_conversation(token, out):
         return jsonify({"error": "保存に失敗しました"}), 500
-    # Vercel 等のプロキシ経由のときは表向きのホストで共有URLを組み立てる
     forwarded_host = request.headers.get("X-Forwarded-Host")
     forwarded_proto = request.headers.get("X-Forwarded-Proto", "https")
     if forwarded_host:
@@ -76,20 +79,20 @@ def api_share():
     return jsonify({"token": token, "url": url})
 
 
-# シェアされた会話の閲覧
+# シェアされた会話の閲覧（ログイン不要）
 @app.route("/s/<token>")
 def view_shared(token):
     messages = get_shared_conversation(token)
     if messages is None:
-        return render_template("share.html", error=True, messages=[]), 404
-    return render_template("share.html", error=False, messages=messages)
+        return render_template("share.html", error=True, messages=[], ga_measurement_id=GA_MEASUREMENT_ID), 404
+    return render_template("share.html", error=False, messages=messages, ga_measurement_id=GA_MEASUREMENT_ID)
+
 
 @app.route("/ask", methods=["POST"])
 def ask():
     data = request.get_json()
     q = data.get("question", "")
 
-    # 直近の履歴をテキストにまとめる（ChatGPT 風のコンテキスト）
     history_lines: list[str] = []
     for i, (hq, ha) in enumerate(WEB_CHAT_HISTORY[-5:], start=1):
         history_lines.append(f"[{i}] ユーザー: {hq}")
@@ -110,16 +113,13 @@ def ask():
     try:
         ans = answer_query(full_query)
     except Exception as e:
-        # エラーの詳細をログに記録
         import traceback
         print(f"[app] 質問処理エラー: {str(e)}")
         print(f"[app] トレースバック:\n{traceback.format_exc()}")
         ans = "申し訳ございません。回答の生成中にエラーが発生しました。しばらく時間をおいて再度お試しください。"
 
-    # 履歴を更新（直近の質問と回答を保存）
     WEB_CHAT_HISTORY.append((q, ans))
 
-    # Supabaseにログを保存（非同期で実行、エラーが発生してもレスポンスには影響しない）
     try:
         # IPアドレスを取得（ユーザー識別用）
         user_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', 'unknown'))
@@ -131,7 +131,6 @@ def ask():
             metadata={"ip_address": user_ip}
         )
     except Exception as e:
-        # ログ保存のエラーは無視（アプリケーションの動作には影響しない）
         print(f"[app] ログ保存エラー（無視）: {e}")
 
     return jsonify({"answer": ans})
@@ -151,14 +150,8 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event: MessageEvent):
     user_text = event.message.text
-
-    # ユーザー ID（個別の会話コンテキストを持つため）
     user_id = event.source.user_id if hasattr(event, "source") else "unknown"
-
-    # ユーザーごとの履歴を取得（なければ空リスト）
     history = LINE_CHAT_HISTORY.get(user_id, [])
-
-    # 直近の履歴をテキストにまとめる
     history_lines: list[str] = []
     for i, (hq, ha) in enumerate(history[-5:], start=1):
         history_lines.append(f"[{i}] ユーザー: {hq}")
@@ -179,13 +172,11 @@ def handle_message(event: MessageEvent):
     try:
         bot_reply = answer_query(full_query)
     except Exception as e:
-        # エラーの詳細をログに記録
         import traceback
         print(f"[app] LINE質問処理エラー: {str(e)}")
         print(f"[app] トレースバック:\n{traceback.format_exc()}")
         bot_reply = "申し訳ございません。回答の生成中にエラーが発生しました。しばらく時間をおいて再度お試しください。"
 
-    # ユーザーごとの履歴を更新
     history.append((user_text, bot_reply))
     LINE_CHAT_HISTORY[user_id] = history
     
@@ -199,7 +190,6 @@ def handle_message(event: MessageEvent):
             metadata={"line_user_id": user_id}
         )
     except Exception as e:
-        # ログ保存のエラーは無視（アプリケーションの動作には影響しない）
         print(f"[app] ログ保存エラー（無視）: {e}")
     
     # LINE に返信
