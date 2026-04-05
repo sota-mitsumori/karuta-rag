@@ -50,7 +50,7 @@ GA_MEASUREMENT_ID = _ga_env if _ga_env else "G-3R1H6X7CDK"
 # 既存の Web UI
 @app.route("/")
 def index():
-    return render_template("index.html", ga_measurement_id=GA_MEASUREMENT_ID)
+    return render_template("index.html", measurement_id=GA_MEASUREMENT_ID)
 
 
 # 会話をシェア用URLで保存
@@ -84,8 +84,8 @@ def api_share():
 def view_shared(token):
     messages = get_shared_conversation(token)
     if messages is None:
-        return render_template("share.html", error=True, messages=[], ga_measurement_id=GA_MEASUREMENT_ID), 404
-    return render_template("share.html", error=False, messages=messages, ga_measurement_id=GA_MEASUREMENT_ID)
+        return render_template("share.html", error=True, messages=[], measurement_id=GA_MEASUREMENT_ID), 404
+    return render_template("share.html", error=False, messages=messages, measurement_id=GA_MEASUREMENT_ID)
 
 
 @app.route("/ask", methods=["POST"])
